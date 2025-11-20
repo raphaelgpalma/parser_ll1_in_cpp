@@ -34,16 +34,16 @@ struct Gramatica {
     std::vector<Regra> regras;
     std::set<NaoTerminal> nao_terminais;
     std::set<Simbolo> terminais;
-    ConjuntoSimbolos primeiros;
-    ConjuntoSimbolos seguidores;
+    ConjuntoSimbolos first;
+    ConjuntoSimbolos follow;
     TabelaAnalise tabela_parsing;
 
     explicit Gramatica(const std::vector<Regra> &regras_entrada)
         : regras(regras_entrada)
         , nao_terminais{obter_nao_terminais()}
         , terminais{obter_terminais()}
-        , primeiros{calcular_primeiros()}
-        , seguidores{calcular_seguidores()}
+        , first{calcular_first()}
+        , follow{calcular_follow()}
         , tabela_parsing{construir_tabela_parsing()}
         {}
 
@@ -64,7 +64,7 @@ struct Gramatica {
     }
 
 private:
-    void buscar_seguidor(ConjuntoSimbolos &os_seguidores, NaoTerminal simbolo) const {
+    void buscar_follow(ConjuntoSimbolos &os_follows, NaoTerminal simbolo) const {
         for (const auto &[lado_esq, lado_dir]: regras) {
             // pula caracteres até encontrar o não-terminal
             auto pos = std::find(lado_dir.begin(), lado_dir.end(), simbolo);
@@ -75,39 +75,39 @@ private:
                 if (eh_delimitador(*pos)) {
                     continue;
                 }
-                // se for terminal, apenas adiciona ao SEGUIDOR
+                // se for terminal, apenas adiciona ao FOLLOW
                 if (eh_terminal(*pos)) {
-                    os_seguidores[simbolo].insert(*pos);
+                    os_follows[simbolo].insert(*pos);
                     finalizado = true;
                     break;
                 }
 
-                const auto& primeiros_pos = primeiros.at(*pos);
-                // se os PRIMEIROs do caractere não têm ε, a busca termina
-                if (primeiros_pos.find(VAZIO) == primeiros_pos.end()) {
-                    os_seguidores[simbolo].insert(primeiros_pos.begin(), primeiros_pos.end());
+                const auto& first_pos = first.at(*pos);
+                // se os FIRSTs do caractere não têm ε, a busca termina
+                if (first_pos.find(VAZIO) == first_pos.end()) {
+                    os_follows[simbolo].insert(first_pos.begin(), first_pos.end());
                     finalizado = true;
                     break;
                 }
-                // caso contrário, próximo caractere deve ser verificado após adicionar PRIMEIROs
-                auto copia_primeiros = primeiros_pos;
-                copia_primeiros.erase(VAZIO);
-                os_seguidores[simbolo].insert(copia_primeiros.begin(), copia_primeiros.end());
+                // caso contrário, próximo caractere deve ser verificado após adicionar FIRSTs
+                auto copia_first = first_pos;
+                copia_first.erase(VAZIO);
+                os_follows[simbolo].insert(copia_first.begin(), copia_first.end());
             }
             if (finalizado) { continue; }
             
-            // se chegou ao fim da produção, SEGUIDOR ⊃ SEGUIDOR do lado esquerdo
+            // se chegou ao fim da produção, FOLLOW ⊃ FOLLOW do lado esquerdo
             if (pos == lado_dir.end()) {
-                // encontra SEGUIDOR se não tiver
-                if (os_seguidores[lado_esq].empty()) {
-                    buscar_seguidor(os_seguidores, lado_esq);
+                // encontra FOLLOW se não tiver
+                if (os_follows[lado_esq].empty()) {
+                    buscar_follow(os_follows, lado_esq);
                 }
-                os_seguidores[simbolo].insert(os_seguidores[lado_esq].begin(), os_seguidores[lado_esq].end());
+                os_follows[simbolo].insert(os_follows[lado_esq].begin(), os_follows[lado_esq].end());
             }
         }
     }
 
-    void buscar_primeiro(ConjuntoSimbolos &os_primeiros, NaoTerminal simbolo) const {
+    void buscar_first(ConjuntoSimbolos &os_firsts, NaoTerminal simbolo) const {
         for (const auto &[lado_esq, lado_dir]: regras) {
             // encontra produções do não-terminal
             if (lado_esq != simbolo) {
@@ -119,31 +119,31 @@ private:
                 if (eh_delimitador(*pos)) {
                     continue;
                 }
-                // se primeiro caractere na produção é terminal, adiciona à lista de primeiros
+                // se primeiro caractere na produção é terminal, adiciona à lista de firsts
                 if (eh_terminal(*pos)) {
-                    os_primeiros[simbolo].insert(*pos);
+                    os_firsts[simbolo].insert(*pos);
                     break;
                 }
                 
-                // se caractere no lado direito é não-terminal e cujo PRIMEIRO ainda não foi encontrado
-                const auto& primeiros_pos = os_primeiros[*pos];
-                if (primeiros_pos.empty()) {
-                    buscar_primeiro(os_primeiros, *pos);
+                // se caractere no lado direito é não-terminal e cujo FIRST ainda não foi encontrado
+                const auto& first_pos = os_firsts[*pos];
+                if (first_pos.empty()) {
+                    buscar_first(os_firsts, *pos);
                 }
                 
                 // se variável não tem ε, vai para próxima produção
-                if (primeiros_pos.find(VAZIO) == primeiros_pos.end()) {
-                    os_primeiros[simbolo].insert(primeiros_pos.begin(), primeiros_pos.end());
+                if (first_pos.find(VAZIO) == first_pos.end()) {
+                    os_firsts[simbolo].insert(first_pos.begin(), first_pos.end());
                     break;
                 }
                 
-                auto copia_primeiros = primeiros_pos;
-                // remove ε do PRIMEIRO se não for a última variável
+                auto copia_first = first_pos;
+                // remove ε do FIRST se não for a última variável
                 if (!eh_ultimo(pos, lado_dir.end())) {
-                    copia_primeiros.erase(VAZIO);
+                    copia_first.erase(VAZIO);
                 }
-                // anexa primeiros dessa variável
-                os_primeiros[simbolo].insert(copia_primeiros.begin(), copia_primeiros.end());
+                // anexa firsts dessa variável
+                os_firsts[simbolo].insert(copia_first.begin(), copia_first.end());
             }
         }
     }
@@ -153,27 +153,27 @@ private:
         return std::find_if_not(it, fim, eh_delimitador) != fim;
     }
 
-    [[nodiscard]] ConjuntoSimbolos calcular_primeiros() const {
+    [[nodiscard]] ConjuntoSimbolos calcular_first() const {
         ConjuntoSimbolos resultado;
         for (NaoTerminal nt: nao_terminais) {
             if (resultado[nt].empty()) {
-                buscar_primeiro(resultado, nt);
+                buscar_first(resultado, nt);
             }
         }
         return resultado;
     }
 
-    [[nodiscard]] ConjuntoSimbolos calcular_seguidores() const {
+    [[nodiscard]] ConjuntoSimbolos calcular_follow() const {
         ConjuntoSimbolos resultado;
-        // encontra seguidor da variável inicial primeiro
+        // encontra follow da variável inicial primeiro
         auto var_inicial = simbolo_inicial();
         resultado[var_inicial].insert(FIM_ENTRADA);
-        buscar_seguidor(resultado, var_inicial);
+        buscar_follow(resultado, var_inicial);
         
-        // encontra seguidores para resto das variáveis
+        // encontra follows para resto das variáveis
         for (NaoTerminal nt: nao_terminais) {
             if (resultado[nt].empty()) {
-                buscar_seguidor(resultado, nt);
+                buscar_follow(resultado, nt);
             }
         }
         return resultado;
@@ -221,21 +221,21 @@ private:
                     continue;
                 }
 
-                auto copia_primeiros = primeiros.at(c);
-                if (copia_primeiros.find(VAZIO) == copia_primeiros.end()) {
-                    lista_proximos.insert(copia_primeiros.begin(), copia_primeiros.end());
+                auto copia_first = first.at(c);
+                if (copia_first.find(VAZIO) == copia_first.end()) {
+                    lista_proximos.insert(copia_first.begin(), copia_first.end());
                     finalizado = true;
                     break;
                 }
-                copia_primeiros.erase(VAZIO);
-                lista_proximos.insert(copia_primeiros.begin(), copia_primeiros.end());
+                copia_first.erase(VAZIO);
+                lista_proximos.insert(copia_first.begin(), copia_first.end());
             }
             
             // se todo o lado direito pode ser pulado através de ε ou chegando ao fim
-            // adiciona SEGUIDOR à lista PRÓXIMOS
+            // adiciona FOLLOW à lista PRÓXIMOS
             if (!finalizado) {
-                const auto &meus_seguidores = seguidores.at(lado_esq);
-                lista_proximos.insert(meus_seguidores.begin(), meus_seguidores.end());
+                const auto &meus_follows = follow.at(lado_esq);
+                lista_proximos.insert(meus_follows.begin(), meus_follows.end());
             }
             
             size_t linha = distance(nao_terminais.begin(), nao_terminais.find(lado_esq));
@@ -293,14 +293,14 @@ std::ostream &operator<<(std::ostream &saida, const Gramatica &gram) {
         << "Os não-terminais na gramática são: " << gram.nao_terminais << "\n"
         << "Os terminais na gramática são: " << gram.terminais << "\n"
         << "\n"
-        << "Conjunto PRIMEIRO: \n";
-    for (const auto &[nao_terminal, conjunto]: gram.primeiros) {
-        saida << "PRIMEIRO(" << nao_terminal << ") = " << conjunto << "\n";
+        << "Conjunto FIRST: \n";
+    for (const auto &[nao_terminal, conjunto]: gram.first) {
+        saida << "FIRST(" << nao_terminal << ") = " << conjunto << "\n";
     }
     saida << "\n"
-        << "Conjunto SEGUIDOR: \n";
-    for (const auto &[nao_terminal, conjunto]: gram.seguidores) {
-        saida << "SEGUIDOR(" << nao_terminal << ") = " << conjunto << "\n";
+        << "Conjunto FOLLOW: \n";
+    for (const auto &[nao_terminal, conjunto]: gram.follow) {
+        saida << "FOLLOW(" << nao_terminal << ") = " << conjunto << "\n";
     }
     saida << "\n"
         << "Tabela de Análise Sintática: \n"
