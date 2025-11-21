@@ -2,6 +2,16 @@
 
 Um analisador sintatico ou parser LL(1) implementado em C++ que processa gramáticas livres de contexto e valida strings de entrada.
 
+--- 
+## Autores
+
+- **Diogo Lepri Moreira**
+- **Raphael Garcia Palma**
+- **Pedro Henrique Tavares**
+- **Luigi Castoldi Picchi**
+
+---
+
 ## Características
 
 - Cálculo automático dos conjuntos FIRST e FOLLOW
