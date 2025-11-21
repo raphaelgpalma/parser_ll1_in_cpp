@@ -50,7 +50,7 @@ A→e
 
 O programa irá:
 1. Carregar e analisar a gramática
-2. Exibir os conjuntos PRIMEIRO e SEGUIDOR
+2. Exibir os conjuntos FIRST e FOLLOW
 3. Mostrar a tabela de análise sintática
 4. Entrar no modo interativo
 
