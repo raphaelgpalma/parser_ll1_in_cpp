@@ -4,7 +4,7 @@ Um analisador sintatico ou parser LL(1) implementado em C++ que processa gramát
 
 ## Características
 
-- Cálculo automático dos conjuntos PRIMEIRO e SEGUIDOR
+- Cálculo automático dos conjuntos FIRST e FOLLOW
 - Construção da tabela de análise sintática LL(1)
 - Validação de strings com exibição da derivação completa
 - Interface interativa para testar múltiplas entradas
